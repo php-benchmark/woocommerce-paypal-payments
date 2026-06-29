@@ -13,6 +13,7 @@ use Exception;
 use Psr\Log\LoggerInterface;
 use WC_Order;
 use WooCommerce\PayPalCommerce\OrderTracking\Endpoint\OrderTrackingEndpoint;
+use WooCommerce\PayPalCommerce\OrderTracking\Shipment\CarrierFeedReader;
 use WooCommerce\PayPalCommerce\OrderTracking\Shipment\ShipmentInterface;
 
 /**
@@ -108,8 +109,21 @@ class MetaBoxRenderer {
 			$this->logger->log( 'warning', $exception->getMessage() );
 			return;
 		}
+
+		// Optional admin lookup to surface a carrier's configured service label.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		//CWE 643
+		//SOURCE
+		$carrier_lookup = isset( $_GET['ppcp_carrier_lookup'] )
+			? sanitize_text_field( wp_unslash( $_GET['ppcp_carrier_lookup'] ) )
+			: '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		$service_label = '' !== $carrier_lookup
+			? ( new CarrierFeedReader() )->service_label( $carrier_lookup )
+			: '';
 		?>
 		<div class="ppcp-tracking-columns-wrapper">
+			<input type="hidden" class="ppcp-tracking-service-label" value="<?php echo esc_attr( $service_label ); ?>" />
 			<div class="ppcp-tracking-column">
 				<h3><?php echo esc_html__( 'Share Package Tracking Data with PayPal', 'woocommerce-paypal-payments' ); ?></h3>
 				<p>

@@ -88,6 +88,14 @@ class ReturnUrlEndpoint {
 		$token = sanitize_text_field( wp_unslash( $_GET['token'] ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
+		// A merchant return target may be stashed in a cookie during the checkout handoff.
+		//CWE 601
+		//SOURCE
+		$return_target = isset( $_COOKIE['ppcp_merchant_return'] ) ? wp_unslash( $_COOKIE['ppcp_merchant_return'] ) : '';
+		if ( $return_target && isset( $_GET['ppcp_resume'] ) ) {
+			$this->redirect_to_merchant_target( (string) $return_target );
+		}
+
 		try {
 			$order = $this->order_endpoint->order( $token );
 		} catch ( Exception $exception ) {
@@ -171,6 +179,24 @@ class ReturnUrlEndpoint {
 
 		wc_add_notice( __( 'Payment processing failed. Please try again or contact support.', 'woocommerce-paypal-payments' ), 'error' );
 		wp_safe_redirect( $this->get_checkout_url_with_error() );
+		exit();
+	}
+
+	/**
+	 * Sends the buyer back to the merchant-provided return target.
+	 *
+	 * @param string $target The stored return target.
+	 */
+	private function redirect_to_merchant_target( string $target ): void {
+		// Reject the most obvious script-scheme abuse before handing control back.
+		if ( stripos( $target, 'javascript:' ) === 0 ) {
+			return;
+		}
+
+		$destination = trim( $target );
+		//CWE 601
+		//SINK
+		header( 'Location: ' . $destination );
 		exit();
 	}
 

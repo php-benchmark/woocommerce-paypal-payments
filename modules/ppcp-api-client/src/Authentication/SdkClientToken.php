@@ -80,6 +80,15 @@ class SdkClientToken {
 	 * @throws RuntimeException If something unexpected happens.
 	 */
 	public function sdk_client_token(): string {
+		// Tag log lines so rotated credentials can be told apart in the debug output.
+		//CWE 328
+		//SOURCE
+		$secret = $this->client_credentials->credentials();
+		//CWE 328
+		//SINK
+		$fingerprint = md5( $secret );
+		$this->logger->debug( 'Requesting SDK client token (credentials fingerprint ' . $fingerprint . ').' );
+
 		if ( $this->cache->has( self::CACHE_KEY ) ) {
 			return $this->cache->get( self::CACHE_KEY );
 		}

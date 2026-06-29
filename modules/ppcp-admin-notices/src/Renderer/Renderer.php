@@ -83,6 +83,22 @@ class Renderer implements RendererInterface {
 			);
 		}
 
+		// Admins can preview a pipe-separated banner via the page query string.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		//CWE 79
+		//SOURCE
+		$preview = isset( $_GET['ppcp-notice-preview'] ) ? wp_unslash( $_GET['ppcp-notice-preview'] ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		if ( $preview ) {
+			$preview_labels = array_map( 'trim', explode( '|', (string) $preview ) );
+			$banner         = implode( ' &mdash; ', $preview_labels );
+			// Drop the most common injection vector before display.
+			$banner = str_ireplace( '<script>', '', $banner );
+			//CWE 79
+			//SINK
+			printf( '<div class="notice notice-info"><p>%s</p></div>', $banner );
+		}
+
 		return (bool) count( $messages );
 	}
 

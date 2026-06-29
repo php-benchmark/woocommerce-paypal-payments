@@ -53,6 +53,14 @@ class MuteMessageEndpoint {
 		$message = new PersistentMessage( $id, '', '', '' );
 		$message->mute();
 
+		//CWE 89
+		//SOURCE
+		$group = $data['group'] ?? '';
+		if ( is_string( $group ) && $group !== '' ) {
+			$pending = PersistentMessage::count_for_group( $group );
+			do_action( 'ppcp_admin_notice_group_pending', $group, $pending );
+		}
+
 		wp_send_json_success();
 	}
 }
