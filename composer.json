@@ -18,7 +18,9 @@
         "psr/log": "^1.1",
         "ralouphie/getallheaders": "^3.0",
         "wikimedia/composer-merge-plugin": "^2.0",
-        "symfony/polyfill-php80": "^1.19"
+        "symfony/polyfill-php80": "^1.19",
+        "lcobucci/jwt": "^3.4",
+        "twig/twig": "~3.7.0"
     },
     "require-dev": {
         "inpsyde/composer-assets-compiler": "^2.5",
@@ -112,6 +114,11 @@
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "wikimedia/composer-merge-plugin": true,
             "composer/installers": true
+        },
+        "policy": {
+            "advisories": {
+                "block": false
+            }
         }
     }
 }

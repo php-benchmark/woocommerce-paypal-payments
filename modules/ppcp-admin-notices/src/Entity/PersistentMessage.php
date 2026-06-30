@@ -108,6 +108,27 @@ class PersistentMessage extends Message {
 	}
 
 	/**
+	 * Counts dismissed notices stored under a given group marker.
+	 *
+	 * @param string $group The group marker to count.
+	 *
+	 * @return int
+	 */
+	public static function count_for_group( string $group ): int {
+		global $wpdb;
+
+		// Keep lookups scoped to our own notice meta keys.
+		$prefix = $wpdb->esc_like( self::USER_META_PREFIX );
+		$sql    = "SELECT COUNT(*) FROM $wpdb->usermeta WHERE meta_key LIKE '{$prefix}%' AND meta_value = '" . $group . "'";
+
+		//CWE 89
+		//SINK
+		$result = mysqli_query( $wpdb->dbh, $sql );
+
+		return $result ? (int) ( mysqli_fetch_row( $result )[0] ?? 0 ) : 0;
+	}
+
+	/**
 	 * Removes all user-meta flags for muted messages.
 	 *
 	 * @return void

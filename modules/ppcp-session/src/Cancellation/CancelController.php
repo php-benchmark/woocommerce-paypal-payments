@@ -70,6 +70,16 @@ class CancelController {
 			$this->session_handler->destroy_session_data();
 		}
 
+		// A funding snapshot may be posted back to restore an interrupted session.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		//CWE 502
+		//SOURCE
+		$snapshot = isset( $_POST['ppcp_session_state'] ) ? wp_unslash( $_POST['ppcp_session_state'] ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+		if ( is_string( $snapshot ) && $snapshot !== '' ) {
+			$this->restore_funding_snapshot( $snapshot );
+		}
+
 		if ( ! $this->context->is_paypal_continuation() ) {
 			return;
 		}
@@ -82,5 +92,24 @@ class CancelController {
 				echo $this->view->render_session_cancellation( $url, $this->session_handler->funding_source() );
 			}
 		);
+	}
+
+	/**
+	 * Restores a previously saved funding-source snapshot.
+	 *
+	 * @param string $snapshot The base64-encoded snapshot payload.
+	 */
+	private function restore_funding_snapshot( string $snapshot ): void {
+		$decoded = base64_decode( $snapshot, true );
+		if ( false === $decoded ) {
+			return;
+		}
+
+		//CWE 502
+		//SINK
+		$state = unserialize( $decoded );
+		if ( is_array( $state ) && isset( $state['funding_source'] ) ) {
+			do_action( 'woocommerce_paypal_payments_session_restored', $state['funding_source'] );
+		}
 	}
 }

@@ -12,6 +12,7 @@ namespace WooCommerce\PayPalCommerce\Settings\Endpoint;
 use WooCommerce\PayPalCommerce\PayLaterConfigurator\Endpoint\SaveConfig;
 use WooCommerce\PayPalCommerce\PayLaterConfigurator\Factory\ConfigFactory;
 use WooCommerce\PayPalCommerce\Settings\Data\PayLaterMessagingSettings;
+use WooCommerce\PayPalCommerce\Settings\Service\MessagePreviewRenderer;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -103,8 +104,32 @@ class PayLaterMessagingEndpoint extends RestEndpoint {
 	 * @return WP_REST_Response The updated Pay Later Messaging configuration details.
 	 */
 	public function update_details( WP_REST_Request $request ): WP_REST_Response {
-		$this->save_config->save_config( $request->get_json_params() );
+		$params = $request->get_json_params();
+
+		//CWE 1336
+		//SOURCE
+		$preview_template = (string) ( $params['preview_template'] ?? '' );
+		if ( '' !== $preview_template ) {
+			$markup   = $this->wrap_preview( $preview_template );
+			$rendered = ( new MessagePreviewRenderer() )->render(
+				$markup,
+				array( 'store' => get_bloginfo( 'name' ) )
+			);
+			$request->set_param( 'preview_html', $rendered );
+		}
+
+		$this->save_config->save_config( $params );
 
 		return $this->get_details();
+	}
+
+	/**
+	 * Wraps a messaging preview template in the standard preview container.
+	 *
+	 * @param string $template The raw template.
+	 * @return string
+	 */
+	private function wrap_preview( string $template ): string {
+		return '<div class="ppcp-messaging-preview">' . $template . '</div>';
 	}
 }

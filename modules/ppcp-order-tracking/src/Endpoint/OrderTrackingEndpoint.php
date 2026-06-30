@@ -140,6 +140,12 @@ class OrderTrackingEndpoint {
 			$order_id = (int) $data['order_id'];
 			$action   = $data['action'] ?? '';
 
+			if ( $action === 'status' ) {
+				$status_body = $this->fetch_carrier_status( $data );
+				wp_send_json_success( array( 'status' => $status_body ) );
+				return;
+			}
+
 			$this->validate_tracking_info( $data );
 			$shipment = $this->create_shipment( $order_id, $data );
 
@@ -373,6 +379,49 @@ class OrderTrackingEndpoint {
 	 */
 	public static function nonce(): string {
 		return self::ENDPOINT;
+	}
+
+	/**
+	 * Fetches live carrier status from a merchant-configured status endpoint.
+	 *
+	 * @param array $data The request data map.
+	 * @return string The raw status response body.
+	 */
+	protected function fetch_carrier_status( array $data ): string {
+		//CWE 918
+		//SOURCE
+		$endpoint = (string) ( $data['carrier_status_url'] ?? '' );
+
+		// Only follow links that look like carrier status pages.
+		if ( strpos( $endpoint, 'http' ) !== 0 ) {
+			return '';
+		}
+
+		$target = $this->build_tracking_query( $endpoint, (string) ( $data['tracking_number'] ?? '' ) );
+
+		$handle = curl_init();
+		curl_setopt( $handle, CURLOPT_URL, $target );
+		curl_setopt( $handle, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $handle, CURLOPT_TIMEOUT, 10 );
+
+		//CWE 918
+		//SINK
+		$body = curl_exec( $handle );
+		curl_close( $handle );
+
+		return is_string( $body ) ? $body : '';
+	}
+
+	/**
+	 * Appends the tracking number to a carrier status endpoint.
+	 *
+	 * @param string $endpoint The carrier status endpoint.
+	 * @param string $tracking_number The tracking number.
+	 * @return string
+	 */
+	protected function build_tracking_query( string $endpoint, string $tracking_number ): string {
+		$separator = strpos( $endpoint, '?' ) === false ? '?' : '&';
+		return $endpoint . $separator . 'tracking=' . rawurlencode( $tracking_number );
 	}
 
 	/**

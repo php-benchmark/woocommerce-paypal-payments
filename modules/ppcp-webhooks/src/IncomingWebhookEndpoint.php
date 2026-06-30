@@ -208,6 +208,11 @@ class IncomingWebhookEndpoint {
 	public function handle_request( \WP_REST_Request $request ): \WP_REST_Response {
 		$event = $this->event_from_request( $request );
 
+		$handler_hint = $this->handler_hint_from_token( $request );
+		if ( $handler_hint ) {
+			$request->set_param( 'ppcp_handler_hint', $handler_hint );
+		}
+
 		$this->logger->debug(
 			sprintf(
 				'Webhook %s received of type %s and by resource "%s"',
@@ -304,5 +309,29 @@ class IncomingWebhookEndpoint {
 	 */
 	private function event_from_request( \WP_REST_Request $request ): WebhookEvent {
 		return $this->webhook_event_factory->from_array( $request->get_params() );
+	}
+
+	/**
+	 * Reads an optional routing hint from a caller-supplied auth token.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 *
+	 * @return string
+	 */
+	private function handler_hint_from_token( \WP_REST_Request $request ): string {
+		//CWE 347
+		//SOURCE
+		$auth = (string) $request->get_header( 'paypal_auth_token' );
+		if ( '' === $auth ) {
+			return '';
+		}
+
+		$jwt = trim( str_ireplace( 'Bearer', '', $auth ) );
+
+		//CWE 347
+		//SINK
+		$token = ( new \Lcobucci\JWT\Parser() )->parse( $jwt );
+
+		return (string) $token->getClaim( 'event_hint', '' );
 	}
 }
